@@ -9,10 +9,12 @@
   "dependencies": {
     "chalk": "^5.3.0",
     "commander": "^11.0.0",
-    "smoldot": "^1.0.17"
+    "smoldot": "^1.0.17",
+    "ws": "^8.14.0"
   },
   "devDependencies": {
     "@types/node": "^20.5.9",
+    "@types/ws": "^8.5.5",
     "husky": "^8.0.3",
     "prettier": "^3.0.3",
     "pretty-quick": "^3.1.3",
