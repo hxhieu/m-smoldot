@@ -1,9 +1,13 @@
 import { existsSync, readFileSync } from 'fs'
 import chalk from 'chalk'
-import { AddChainOptions, Chain, start } from 'smoldot'
+import { Chain, start } from 'smoldot'
 import { OptionValues } from 'commander'
+import { info, error } from './logger.ts'
+import { ChainNodeChain } from './types.ts'
 
-async function build(args: OptionValues) {
+const buildChainNode = async (args: OptionValues): Promise<ChainNodeChain> => {
+  const { chain: chainSpecFile, relay: relaySpecFile } = args
+
   // A single client can be used to initialize multiple chains.
   const client = start({
     // portToWorker: port1,
@@ -21,7 +25,7 @@ async function build(args: OptionValues) {
       const minutes = ('0' + now.getMinutes()).slice(-2)
       const seconds = ('0' + now.getSeconds()).slice(-2)
       const milliseconds = ('00' + now.getMilliseconds()).slice(-3)
-      console.log(
+      info(
         `${chalk.grey('[%s:%s:%s.%s]')} ${chalk.magenta('[%s]')} %s`,
         hours,
         minutes,
@@ -33,35 +37,38 @@ async function build(args: OptionValues) {
     },
   })
 
-  const { chain: spec, relay: relaySpec } = args
-
-  if (!existsSync(spec)) {
-    console.error(`Supplied chain spec ${chalk.cyanBright(spec)} not found.`)
+  if (!existsSync(chainSpecFile)) {
+    error(`Supplied chain spec ${chalk.cyanBright(chainSpecFile)} not found.`)
     process.exit(1)
   }
   // Load a string chain specification.
-  const chainSpec = readFileSync(spec, 'utf8')
-
-  const addChainOpts: AddChainOptions = {
-    chainSpec,
-  }
+  const chainSpec = readFileSync(chainSpecFile, 'utf8')
 
   // Has a relay
-  let relay
-  if (existsSync(relaySpec)) {
-    relay = await client.addChain({ chainSpec: readFileSync(relaySpec, 'utf8') })
-    addChainOpts.potentialRelayChains = [relay]
+  let relaySpec: string = ''
+  if (existsSync(relaySpecFile)) {
+    relaySpec = readFileSync(relaySpecFile, 'utf8')
   }
 
-  const chain = await client.addChain(addChainOpts)
+  let chain: Chain
+  let relay: Chain
 
-  // chain.sendJsonRpc('{"jsonrpc":"2.0","id":1,"method":"system_name","params":[]}')
-
-  // Wait for a JSON-RPC response to come back. This is typically done in a loop in the background.
-  // const jsonRpcResponse = await chain.nextJsonRpcResponse()
-  // console.log(jsonRpcResponse)
-
-  return { chain, relay: relay as Chain }
+  // Start the chains
+  if (relaySpec) {
+    relay = await client.addChain({
+      chainSpec: relaySpec,
+    })
+    chain = await client.addChain({
+      chainSpec,
+      potentialRelayChains: [relay],
+    })
+    return { chain, relay }
+  } else {
+    chain = await client.addChain({
+      chainSpec,
+    })
+    return { chain }
+  }
 }
 
-export { build }
+export { buildChainNode }
